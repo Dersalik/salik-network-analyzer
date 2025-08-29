@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36408.4 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetworkAnalyzer", "NetworkAnalyzer\NetworkAnalyzer.csproj", "{F753960E-7C8D-4955-8ED3-2C1F17CF108F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", "{6426EBBB-7304-4A8A-A254-14993F2A4B9D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F753960E-7C8D-4955-8ED3-2C1F17CF108F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F753960E-7C8D-4955-8ED3-2C1F17CF108F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F753960E-7C8D-4955-8ED3-2C1F17CF108F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F753960E-7C8D-4955-8ED3-2C1F17CF108F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6426EBBB-7304-4A8A-A254-14993F2A4B9D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6426EBBB-7304-4A8A-A254-14993F2A4B9D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6426EBBB-7304-4A8A-A254-14993F2A4B9D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6426EBBB-7304-4A8A-A254-14993F2A4B9D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {43AEBEE0-E03B-467C-8F58-B9D028F380CE}
+	EndGlobalSection
+EndGlobal
