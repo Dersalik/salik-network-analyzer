@@ -1,11 +1,11 @@
 name: NetworkAnalyzer CI
 
-# Trigger on push to main/develop or PRs targeting main
+# Trigger on push to master or PRs targeting master
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
     paths-ignore:
       - '**.md'
       - 'docs/**'
