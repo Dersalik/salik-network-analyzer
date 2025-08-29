@@ -43,7 +43,7 @@ static async Task<int> RunInteractiveMode()
 
         var exitCode = result.Match(
             Some: code => code,
-            None: () => -1  // Continue the loop
+            None: () => -1  // Continue the loop test
         );
 
         if (exitCode != -1)
