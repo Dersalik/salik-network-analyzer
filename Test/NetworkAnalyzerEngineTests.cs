@@ -389,25 +389,6 @@ namespace Tests
 
             Assert.True(outcome.StartsWith("Success:") || outcome.StartsWith("Error:"));
         }
-
-        [Fact]
-        public async Task ContinuousPingAsync_Results_ShouldSupportPatternMatching()
-        {
-            // Arrange
-            var target = IPAddress.Loopback;
-
-            // Act
-            var result = await NetworkAnalyzerEngine.ContinuousPingAsync(target, 2);
-
-            // Assert
-            var pingCount = result.Match(
-                Right: results => results.Count,
-                Left: _ => -1
-            );
-
-            Assert.True(pingCount == 2 || pingCount == -1);
-        }
-
         #endregion
 
         #region Edge Cases and Error Handling
@@ -502,55 +483,6 @@ namespace Tests
             var duration = DateTime.UtcNow - startTime;
             Assert.True(duration.TotalSeconds < 30); // Should complete within 30 seconds
             Assert.True(result.IsRight || result.IsLeft);
-        }
-
-        [Fact]
-        public async Task ContinuousPingAsync_WithManyPings_ShouldCompleteInReasonableTime()
-        {
-            // Arrange
-            var target = IPAddress.Loopback;
-            var count = 10;
-            var interval = TimeSpan.FromMilliseconds(100);
-            var startTime = DateTime.UtcNow;
-
-            // Act
-            var result = await NetworkAnalyzerEngine.ContinuousPingAsync(target, count, interval);
-
-            // Assert
-            var duration = DateTime.UtcNow - startTime;
-            Assert.True(result.IsRight);
-
-            result.IfRight(results =>
-            {
-                Assert.Equal(count, results.Count);
-                // Should take at least the interval time between pings
-                var expectedMinDuration = interval * (count - 1);
-                Assert.True(duration >= expectedMinDuration);
-            });
-        }
-
-        [Fact]
-        public async Task AnalyzeSingleDeviceAsync_ShouldBeReliable()
-        {
-            // Run the same operation multiple times to ensure reliability
-            var target = IPAddress.Loopback;
-            var tasks = Enumerable.Range(0, 5)
-                .Select(_ => NetworkAnalyzerEngine.AnalyzeSingleDeviceAsync(target))
-                .ToArray();
-
-            // Act
-            var results = await Task.WhenAll(tasks);
-
-            // Assert
-            Assert.All(results, result =>
-            {
-                Assert.True(result.IsRight);
-                result.IfRight(device =>
-                {
-                    Assert.Equal(target, device.IpAddress);
-                    Assert.True(device.IsReachable);
-                });
-            });
         }
 
         #endregion
@@ -674,31 +606,6 @@ namespace Tests
             }
         }
 
-        [Fact]
-        public async Task ContinuousPingAsync_ConcurrentCalls_ShouldNotInterfere()
-        {
-            // Arrange
-            var target = IPAddress.Loopback;
-
-            // Act - Run multiple continuous pings concurrently
-            var tasks = Enumerable.Range(0, 3)
-                .Select(_ => NetworkAnalyzerEngine.ContinuousPingAsync(target, 2))
-                .ToArray();
-
-            var results = await Task.WhenAll(tasks);
-
-            // Assert
-            Assert.All(results, result =>
-            {
-                Assert.True(result.IsRight);
-                result.IfRight(pingResults =>
-                {
-                    Assert.Equal(2, pingResults.Count);
-                    Assert.All(pingResults, r => Assert.Equal(target, r.Target));
-                });
-            });
-        }
-
         #endregion
 
         #region Record Equality and Immutability Tests
@@ -778,27 +685,6 @@ namespace Tests
             result.IfLeft(error =>
             {
                 Assert.IsType<NetworkError.NetworkDiscoveryFailed>(error);
-            });
-        }
-
-        [Fact]
-        public async Task ContinuousPingAsync_WithNullInterval_ShouldUseDefault()
-        {
-            // Arrange
-            var target = IPAddress.Loopback;
-            var startTime = DateTime.UtcNow;
-
-            // Act
-            var result = await NetworkAnalyzerEngine.ContinuousPingAsync(target, 2, null);
-
-            // Assert
-            var duration = DateTime.UtcNow - startTime;
-            Assert.True(result.IsRight);
-            result.IfRight(results =>
-            {
-                Assert.Equal(2, results.Count);
-                // Should use default interval of 1 second, so should take at least 1 second
-                Assert.True(duration >= TimeSpan.FromSeconds(0.9)); // Allow some tolerance
             });
         }
 

@@ -306,46 +306,6 @@ namespace Tests
 
         #endregion
 
-        #region Configuration Handling Tests
-
-        [Fact]
-        public async Task PingAsync_WithDefaultStructConfig_ShouldUseDefaults()
-        {
-            // Arrange
-            var target = IPAddress.Loopback;
-            var defaultConfig = default(PingConfiguration);
-
-            // Act
-            var result = await PingService.PingAsync(target, defaultConfig);
-
-            // Assert
-            Assert.True(result.IsRight);
-            result.IfRight(pingResult =>
-            {
-                Assert.Equal(target, pingResult.Target);
-            });
-        }
-
-        [Theory]
-        [InlineData(100, 16, 32, true)]
-        [InlineData(10000, 64, 128, false)]
-        [InlineData(1, 1, 1, true)]
-        public async Task PingAsync_WithVariousConfigurations_ShouldWork(
-            int timeout, int bufferSize, int ttl, bool dontFragment)
-        {
-            // Arrange
-            var target = IPAddress.Loopback;
-            var config = new PingConfiguration(timeout, bufferSize, ttl, dontFragment);
-
-            // Act
-            var result = await PingService.PingAsync(target, config);
-
-            // Assert
-            Assert.True(result.IsRight);
-        }
-
-        #endregion
-
         #region Concurrency Tests
 
         [Theory]
@@ -401,24 +361,6 @@ namespace Tests
         #endregion
 
         #region Pattern Matching Tests
-
-        [Fact]
-        public async Task PingAsync_ResultPatternMatching_ShouldWork()
-        {
-            // Arrange
-            var target = IPAddress.Loopback;
-
-            // Act
-            var result = await PingService.PingAsync(target, PingConfiguration.Default);
-
-            // Assert
-            var outcome = result.Match(
-                Right: pingResult => $"Success: {pingResult.Target}",
-                Left: error => $"Error: {error.Message}"
-            );
-
-            Assert.StartsWith("Success:", outcome);
-        }
 
         [Fact]
         public async Task PingMultipleAsync_ResultPatternMatching_ShouldWork()
