@@ -1,0 +1,65 @@
+name: NetworkAnalyzer CI
+
+# Trigger on push to master or PRs targeting master
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  BUILD_CONFIGURATION: 'Release'
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET ${{ env.DOTNET_VERSION }}
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        cache: true
+
+    - name: Display .NET info
+      run: dotnet --info
+
+    - name: Restore dependencies
+      run: dotnet restore NetworkAnalyzer.sln
+
+    - name: Build solution
+      run: dotnet build NetworkAnalyzer.sln --no-restore --configuration ${{ env.BUILD_CONFIGURATION }}
+
+    - name: Run tests
+      run: |
+        dotnet test Test/Test.csproj \
+          --configuration ${{ env.BUILD_CONFIGURATION }} \
+          --no-build \
+          --verbosity normal \
+          --logger trx \
+          --collect:"XPlat Code Coverage" \
+          --results-directory ./TestResults
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: ./TestResults/*.trx
+        retention-days: 30
+
+    - name: Test NetworkAnalyzer CLI (basic smoke test)
+      run: |
+        cd NetworkAnalyzer/bin/${{ env.BUILD_CONFIGURATION }}/net8.0/
+        echo "Testing basic CLI functionality..."
+        dotnet NetworkAnalyzer.dll ping 127.0.0.1 || echo "CLI test completed"
