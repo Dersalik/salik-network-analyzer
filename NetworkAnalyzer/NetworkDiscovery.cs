@@ -6,8 +6,18 @@ using static LanguageExt.Prelude;
 
 namespace NetworkAnalyzer;
 
+/// <summary>
+/// Represents a range of IP addresses defined by start and end addresses.
+/// </summary>
+/// <param name="StartAddress">The starting IP address of the range.</param>
+/// <param name="EndAddress">The ending IP address of the range.</param>
 public readonly record struct NetworkRange(IPAddress StartAddress, IPAddress EndAddress)
 {
+    /// <summary>
+    /// Creates a network range from CIDR notation (e.g., "192.168.1.0/24").
+    /// </summary>
+    /// <param name="cidr">The CIDR notation string.</param>
+    /// <returns>Either a network error or the parsed network range.</returns>
     public static Either<NetworkError, NetworkRange> FromCidr(string cidr)
     {
         return Try(() =>
@@ -37,6 +47,10 @@ public readonly record struct NetworkRange(IPAddress StartAddress, IPAddress End
         );
     }
 
+    /// <summary>
+    /// Gets all IP addresses in this network range.
+    /// </summary>
+    /// <returns>An enumerable of IP addresses from start to end.</returns>
     public IEnumerable<IPAddress> GetAddresses()
     {
         var startBytes = StartAddress.GetAddressBytes();
@@ -52,9 +66,15 @@ public readonly record struct NetworkRange(IPAddress StartAddress, IPAddress End
     }
 }
 
+/// <summary>
+/// Provides network discovery and scanning functionality for local and remote networks.
+/// </summary>
 public static class NetworkDiscovery
 {
-
+    /// <summary>
+    /// Gets all active network interfaces on the local machine, excluding loopback.
+    /// </summary>
+    /// <returns>Either a network error or a sequence of active network interfaces.</returns>
     public static Either<NetworkError, Seq<NetworkInterface>> GetNetworkInterfaces()
     {
         var result = Try(() =>
@@ -71,6 +91,13 @@ public static class NetworkDiscovery
         );
     }
 
+    /// <summary>
+    /// Discovers all devices within a specified network range by pinging each address.
+    /// </summary>
+    /// <param name="range">The network range to scan.</param>
+    /// <param name="pingConfig">Optional ping configuration. Uses defaults if not specified.</param>
+    /// <param name="maxConcurrency">Maximum number of concurrent ping operations. Defaults to 500.</param>
+    /// <returns>Either a network error or a sequence of discovered devices.</returns>
     public static async Task<Either<NetworkError, Seq<NetworkDevice>>> DiscoverDevicesAsync(
     NetworkRange range,
     PingConfiguration pingConfig = default,
@@ -91,13 +118,13 @@ public static class NetworkDiscovery
                         var device = NetworkDevice.Create(result.Target)
                             .WithPingResult(result.success, result.ResponseTime, result.Status);
 
-                        var hostName = await ResolveHostNameAsync(result.Target);
+                        var hostName = await NetworkUtilities.ResolveHostNameAsync(result.Target);
                         device = hostName.Match(
                             Some: name => device.WithHostName(name),
                             None: () => device
                         );
 
-                        var deviceType = InferDeviceType(device);
+                        var deviceType = NetworkUtilities.InferDeviceType(device);
                         device = device.WithDeviceType(deviceType);
 
                         devices.Add(device);
@@ -115,6 +142,11 @@ public static class NetworkDiscovery
         );
     }
 
+    /// <summary>
+    /// Discovers all devices on the local network by scanning all active network interfaces.
+    /// </summary>
+    /// <param name="pingConfig">Optional ping configuration. Uses defaults if not specified.</param>
+    /// <returns>Either a network error or a sequence of discovered devices.</returns>
     public static async Task<Either<NetworkError, Seq<NetworkDevice>>> DiscoverLocalNetworkAsync(
     PingConfiguration pingConfig = default)
     {
@@ -189,41 +221,6 @@ public static class NetworkDiscovery
             Succ: range => Right<NetworkError, NetworkRange>(range),
             Fail: ex => Left<NetworkError, NetworkRange>(new NetworkError.InvalidNetworkRange(
                 addressInfo.Address.ToString(), ex.Message))
-        );
-    }
-
-    private static async Task<Option<string>> ResolveHostNameAsync(IPAddress ipAddress)
-    {
-        return await TryAsync(async () =>
-        {
-            var hostEntry = await Dns.GetHostEntryAsync(ipAddress);
-            return hostEntry.HostName;
-        }).Match(
-            Succ: Some,
-            Fail: _ => None
-        );
-    }
-
-    private static NetworkDeviceType InferDeviceType(NetworkDevice device)
-    {
-        return device.HostName.Match(
-            Some: hostName =>
-            {
-                var lowerName = hostName.ToLowerInvariant();
-                if (lowerName.Contains("router") || lowerName.Contains("gateway"))
-                    return NetworkDeviceType.Router;
-                if (lowerName.Contains("switch"))
-                    return NetworkDeviceType.Switch;
-                if (lowerName.Contains("printer"))
-                    return NetworkDeviceType.Printer;
-                if (lowerName.Contains("server"))
-                    return NetworkDeviceType.Server;
-                if (lowerName.Contains("phone") || lowerName.Contains("mobile"))
-                    return NetworkDeviceType.MobileDevice;
-
-                return NetworkDeviceType.Computer;
-            },
-            None: () => NetworkDeviceType.Unknown
         );
     }
 }
