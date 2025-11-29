@@ -4,21 +4,6 @@ using NetworkAnalyzer;
 using System.Net;
 using static LanguageExt.Prelude;
 
-/// <summary>
-/// Immutable application state for the interactive mode.
-/// </summary>
-/// <param name="LastAnalysisResult">The most recent network analysis result, if any.</param>
-readonly record struct AppState(Option<NetworkAnalysisResult> LastAnalysisResult)
-{
-    public static readonly AppState Initial = new(None);
-}
-
-/// <summary>
-/// Result of a menu operation including updated state.
-/// </summary>
-/// <param name="ExitCode">Exit code (Some for exit, None to continue loop).</param>
-/// <param name="NewState">Updated application state.</param>
-readonly record struct MenuResult(Option<int> ExitCode, AppState NewState);
 
 // Display startup banner
 Console.WriteLine("╔═══════════════════════════════════════════╗");
@@ -569,3 +554,19 @@ static int ShowUsage()
 
     return 1;
 }
+
+/// <summary>
+/// Immutable application state for the interactive mode.
+/// </summary>
+/// <param name="LastAnalysisResult">The most recent network analysis result, if any.</param>
+readonly record struct AppState(Option<NetworkAnalysisResult> LastAnalysisResult)
+{
+    public static readonly AppState Initial = new(None);
+}
+
+/// <summary>
+/// Result of a menu operation including updated state.
+/// </summary>
+/// <param name="ExitCode">Exit code (Some for exit, None to continue loop).</param>
+/// <param name="NewState">Updated application state.</param>
+readonly record struct MenuResult(Option<int> ExitCode, AppState NewState);
