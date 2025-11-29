@@ -4,6 +4,7 @@ using NetworkAnalyzer;
 using System.Net;
 using static LanguageExt.Prelude;
 
+
 // Display startup banner
 Console.WriteLine("╔═══════════════════════════════════════════╗");
 Console.WriteLine("║          Network Analyzer v1.0           ║");
@@ -22,6 +23,8 @@ return await RunCommandLineMode(args);
 // Local function definitions (must be static in top-level programs)
 static async Task<int> RunInteractiveMode()
 {
+    var state = AppState.Initial;
+
     while (true)
     {
         DisplayMainMenu();
@@ -29,19 +32,20 @@ static async Task<int> RunInteractiveMode()
 
         var resultTask = choice switch
         {
-            "1" => AnalyzeLocalNetwork(),
-            "2" => AnalyzeSpecificNetwork(),
-            "3" => PingSingleDevice(),
-            "4" => ContinuousPing(),
-            "5" => TraceRoute(),
-            "6" => ExportResults(),
-            "7" => Task.FromResult(Some(0)),
-            _ => Task.FromResult<Option<int>>(None)
+            "1" => AnalyzeLocalNetwork(state),
+            "2" => AnalyzeSpecificNetwork(state),
+            "3" => PingSingleDevice(state),
+            "4" => ContinuousPing(state),
+            "5" => TraceRoute(state),
+            "6" => ExportResults(state),
+            "7" => Task.FromResult(new MenuResult(Some(0), state)),
+            _ => Task.FromResult(new MenuResult(None, state))
         };
 
         var result = await resultTask;
+        state = result.NewState;
 
-        var exitCode = result.Match(
+        var exitCode = result.ExitCode.Match(
             Some: code => code,
             None: () => -1  // Continue the loop test
         );
@@ -87,7 +91,7 @@ static void DisplayMainMenu()
     Console.Write("Select an option (1-7): ");
 }
 
-static async Task<Option<int>> AnalyzeLocalNetwork()
+static async Task<MenuResult> AnalyzeLocalNetwork(AppState state)
 {
     Console.WriteLine("\n🔍 Analyzing local network...");
     Console.WriteLine("This may take a few moments depending on your network size.");
@@ -98,21 +102,21 @@ static async Task<Option<int>> AnalyzeLocalNetwork()
     return result.Match(
         Right: analysisResult =>
         {
-            GlobalVariables.lastAnalysisResult = Some(analysisResult);
+            var newState = state with { LastAnalysisResult = Some(analysisResult) };
             Console.Clear();
             var report = ReportGenerator.GenerateReport(analysisResult, ReportFormat.Console);
             Console.WriteLine(report);
-            return Some(-1);
+            return new MenuResult(Some(-1), newState);
         },
         Left: error =>
         {
             Console.WriteLine($"❌ Error: {error.Message}");
-            return None;
+            return new MenuResult(None, state);
         }
     );
 }
 
-static async Task<Option<int>> AnalyzeSpecificNetwork()
+static async Task<MenuResult> AnalyzeSpecificNetwork(AppState state)
 {
     Console.Write("\nEnter network range (CIDR format, e.g., 192.168.1.0/24): ");
     var network = Console.ReadLine()?.Trim();
@@ -120,7 +124,7 @@ static async Task<Option<int>> AnalyzeSpecificNetwork()
     if (string.IsNullOrEmpty(network))
     {
         Console.WriteLine("❌ Invalid network range.");
-        return None;
+        return new MenuResult(None, state);
     }
 
     Console.WriteLine($"\n🔍 Analyzing network {network}...");
@@ -131,21 +135,21 @@ static async Task<Option<int>> AnalyzeSpecificNetwork()
     return result.Match(
         Right: analysisResult =>
         {
-            GlobalVariables.lastAnalysisResult = Some(analysisResult);
+            var newState = state with { LastAnalysisResult = Some(analysisResult) };
             Console.Clear();
             var report = ReportGenerator.GenerateReport(analysisResult, ReportFormat.Console);
             Console.WriteLine(report);
-            return Some(-1);
+            return new MenuResult(Some(-1), newState);
         },
         Left: error =>
         {
             Console.WriteLine($"❌ Error: {error.Message}");
-            return None;
+            return new MenuResult(None, state);
         }
     );
 }
 
-static async Task<Option<int>> PingSingleDevice()
+static async Task<MenuResult> PingSingleDevice(AppState state)
 {
     Console.Write("\nEnter IP address or hostname: ");
     var target = Console.ReadLine()?.Trim();
@@ -153,7 +157,7 @@ static async Task<Option<int>> PingSingleDevice()
     if (string.IsNullOrEmpty(target))
     {
         Console.WriteLine("❌ Invalid target.");
-        return None;
+        return new MenuResult(None, state);
     }
 
     if (!IPAddress.TryParse(target, out var ipAddress))
@@ -167,13 +171,13 @@ static async Task<Option<int>> PingSingleDevice()
             if (ipAddress == null)
             {
                 Console.WriteLine("❌ Could not resolve hostname.");
-                return None;
+                return new MenuResult(None, state);
             }
         }
         catch
         {
             Console.WriteLine("❌ Could not resolve hostname.");
-            return None;
+            return new MenuResult(None, state);
         }
     }
 
@@ -187,17 +191,17 @@ static async Task<Option<int>> PingSingleDevice()
             Console.WriteLine();
             var report = ReportGenerator.GenerateDeviceSummary(device, ReportFormat.Console);
             Console.WriteLine(report);
-            return Some(-1);
+            return new MenuResult(Some(-1), state);
         },
         Left: error =>
         {
             Console.WriteLine($"❌ Error: {error.Message}");
-            return None;
+            return new MenuResult(None, state);
         }
     );
 }
 
-static async Task<Option<int>> ContinuousPing()
+static async Task<MenuResult> ContinuousPing(AppState state)
 {
     Console.Write("\nEnter IP address or hostname: ");
     var target = Console.ReadLine()?.Trim();
@@ -209,7 +213,7 @@ static async Task<Option<int>> ContinuousPing()
     if (string.IsNullOrEmpty(target))
     {
         Console.WriteLine("❌ Invalid target.");
-        return None;
+        return new MenuResult(None, state);
     }
 
     if (!IPAddress.TryParse(target, out var ipAddress))
@@ -223,13 +227,13 @@ static async Task<Option<int>> ContinuousPing()
             if (ipAddress == null)
             {
                 Console.WriteLine("❌ Could not resolve hostname.");
-                return None;
+                return new MenuResult(None, state);
             }
         }
         catch
         {
             Console.WriteLine("❌ Could not resolve hostname.");
-            return None;
+            return new MenuResult(None, state);
         }
     }
 
@@ -270,17 +274,17 @@ static async Task<Option<int>> ContinuousPing()
                 Console.WriteLine($"Approximate round trip times: Average = {avgTime}ms");
             }
 
-            return Some(-1);
+            return new MenuResult(Some(-1), state);
         },
         Left: error =>
         {
             Console.WriteLine($"❌ Error: {error.Message}");
-            return None;
+            return new MenuResult(None, state);
         }
     );
 }
 
-static async Task<Option<int>> TraceRoute()
+static async Task<MenuResult> TraceRoute(AppState state)
 {
     Console.Write("\nEnter IP address or hostname: ");
     var target = Console.ReadLine()?.Trim();
@@ -288,7 +292,7 @@ static async Task<Option<int>> TraceRoute()
     if (string.IsNullOrEmpty(target))
     {
         Console.WriteLine("❌ Invalid target.");
-        return None;
+        return new MenuResult(None, state);
     }
 
     if (!IPAddress.TryParse(target, out var ipAddress))
@@ -302,13 +306,13 @@ static async Task<Option<int>> TraceRoute()
             if (ipAddress == null)
             {
                 Console.WriteLine("❌ Could not resolve hostname.");
-                return None;
+                return new MenuResult(None, state);
             }
         }
         catch
         {
             Console.WriteLine("❌ Could not resolve hostname.");
-            return None;
+            return new MenuResult(None, state);
         }
     }
 
@@ -334,26 +338,26 @@ static async Task<Option<int>> TraceRoute()
                 }
             }
 
-            return Some(-1);
+            return new MenuResult(Some(-1), state);
         },
         Left: error =>
         {
             Console.WriteLine($"❌ Error: {error.Message}");
-            return None;
+            return new MenuResult(None, state);
         }
     );
 }
 
-static async Task<Option<int>> ExportResults()
+static async Task<MenuResult> ExportResults(AppState state)
 {
-    if (GlobalVariables.lastAnalysisResult.IsNone)
+    if (state.LastAnalysisResult.IsNone)
     {
         Console.WriteLine("\n📤 No analysis results available to export.");
         Console.WriteLine("Please run a network analysis first (options 1 or 2).");
-        return None;
+        return new MenuResult(None, state);
     }
 
-    var analysisResult = GlobalVariables.lastAnalysisResult.Value();
+    var analysisResult = state.LastAnalysisResult.Value();
 
     Console.WriteLine("\n📤 Export Analysis Results");
     Console.WriteLine("Available formats:");
@@ -389,12 +393,12 @@ static async Task<Option<int>> ExportResults()
         await File.WriteAllTextAsync(filename, report);
         Console.WriteLine($"✅ Results exported successfully to: {filename}");
         Console.WriteLine($"📁 Full path: {Path.GetFullPath(filename)}");
-        return Some(-1);
+        return new MenuResult(Some(-1), state);
     }
     catch (Exception ex)
     {
         Console.WriteLine($"❌ Failed to export results: {ex.Message}");
-        return None;
+        return new MenuResult(None, state);
     }
 }
 
@@ -408,10 +412,9 @@ static async Task<int> ScanNetwork(string network)
     return result.Match(
         Right: analysisResult =>
         {
-            GlobalVariables.lastAnalysisResult = Some(analysisResult);
             var report = ReportGenerator.GenerateReport(analysisResult, ReportFormat.Console);
             Console.WriteLine(report);
-            return -1;
+            return 0;
         },
         Left: error =>
         {
@@ -523,7 +526,6 @@ static async Task<int> AnalyzeLocalNetworkCommand()
     return result.Match(
         Right: analysisResult =>
         {
-            GlobalVariables.lastAnalysisResult = Some(analysisResult);
             var report = ReportGenerator.GenerateReport(analysisResult, ReportFormat.Console);
             Console.WriteLine(report);
             return 0;
@@ -552,3 +554,19 @@ static int ShowUsage()
 
     return 1;
 }
+
+/// <summary>
+/// Immutable application state for the interactive mode.
+/// </summary>
+/// <param name="LastAnalysisResult">The most recent network analysis result, if any.</param>
+readonly record struct AppState(Option<NetworkAnalysisResult> LastAnalysisResult)
+{
+    public static readonly AppState Initial = new(None);
+}
+
+/// <summary>
+/// Result of a menu operation including updated state.
+/// </summary>
+/// <param name="ExitCode">Exit code (Some for exit, None to continue loop).</param>
+/// <param name="NewState">Updated application state.</param>
+readonly record struct MenuResult(Option<int> ExitCode, AppState NewState);
